@@ -1,0 +1,122 @@
+---
+title: "STAT40710 Time Series Project"
+author: "Fangyijie Wang"
+date: "4/20/2022"
+output: html_document
+---
+
+### Simulate AR + ARCH Model
+**1.** If the model is AR(1) + ARCH(1), then $y_t = \phi * y_{t-1} + \eta_t$ (where $\eta_t$ follows an ARCH(1) model)  
+**2.** Then $\eta_t = \sigma_t * \epsilon_t$ where $\sigma_t^2 = \alpha_0 + \alpha_1 * \eta_{t-1}^2$  
+Load required libraries.
+```{r, message=FALSE}
+library(TSA)
+library(fGarch)
+```
+Firstly, we need to initialize hyperparameters:
+```{r}
+u = 1 # AR order
+v = 0 # MA order
+p = 1 # ARCH order
+q = 0 # ARCH order
+```
+```{r}
+# sampling coefficients
+samp_coefs = function(l){
+  vec = rep(0,l)
+  for(i in 1:l){
+    vec[i] = runif(1, 0.0, 0.5) * sample(c(-1,1), 1)
+  }
+  return(vec)
+}
+```
+Setup fixed values of parameters.
+```{r}
+mu = 0 # (the linear part) the mean value, by default NULL
+omega = 0.01 # the constant coefficient of the variance equation (default 1e-6)
+alpha = 0.5
+beta = 0
+phi = 0.8
+#alpha;phi
+
+# length of time series
+n = 300
+
+# alpha = 0; if (p > 0) alpha = samp_coefs(p) # the values of AR coefficients
+# beta = 0; if (q > 0) beta = samp_coefs(q) # the values of variance coefficients
+# phi = 0; if (u > 0) phi = samp_coefs(u) # the values of AR coefficients (ARIMA)
+```
+Simulate the ARCH(1) model for $\eta$ with parameters.
+```{r}
+# ARCH(1)
+spec = garchSpec(model = list(mu = mu, omega = omega, alpha = alpha, beta = beta))
+#spec = garchSpec(model = list(mu = 0, omega = 0.01, alpha = 0.5, beta = beta))
+eta = garchSim(spec, n)
+# use simulated eta to simulate a AR(1) model
+ts = arima.sim(list(ar = phi), n, innov = eta$garch)
+plot(ts, t='l')
+```
+
+### Estimate the parameters  
+Load required libraries.  
+```{r, message=FALSE}
+library(forecast)
+library(tseries)
+```
+Plot ACF and PACF 
+```{r}
+# ACF and PACF
+tsdisplay(ts)
+```
+
+It shows the series could be $ARMA(1,0,0)$ model. Let's check the Augmented Dickey-Fuller test.
+```{r}
+adf.test(ts) # Augmented Dickey-Fuller
+```
+Fit $AR(1)$ model on the series data.
+```{r}
+fit_ts = arima(ts, order = c(1,0,0))
+# check residuals 
+res.ts = residuals(fit_ts)
+```
+Perform the McLeod-Li test for conditional heteroscedascity (ARCH).
+```{r}
+McLeod.Li.test(y = res.ts) 
+```
+
+For the model residuals, all the lags are significant. This implies the presence of ARCH effect (Autoregressive Conditional Heteroscedastic effect).
+```{r}
+tsdisplay(res.ts^2)
+```
+
+The ACF and PACF plots for the squared series indicate that $ARMA(1,0)$ model for squared series. Therefore, the corresponding tentative GARCH model is $GARCH(0,1)$
+Now we will fit $GARCH(0,1)$ model on the residual series.  
+```{r}
+fit1 = garchFit(~ arma(0,1) + garch(1,0), 
+              diff(ts), include.mean = F)
+```
+The estimated $\omega$ and $\alpha_1$.  
+```{r}
+# omega
+fit1@fit$par[2]
+# alpha_1
+fit1@fit$par[3]
+```
+```{r}
+m.11 = garch(res.ts, order = c(0,1), trace=FALSE) 
+plot(fit1@sigma.t^2, type='l', ylab='conditional variances')
+```
+
+Plot ACF:
+```{r}
+acf((fit1@residuals/fit1@sigma.t)^2)
+```
+
+Then we perform Ljung-Box test:
+```{r}
+# Ljung-Box test:
+Box.test((fit1@residuals/fit1@sigma.t)^2, lag=15, t='Ljung')
+```
+It shows p-value > 0.05, so we fail to reject null hypothesis. 
+
+
