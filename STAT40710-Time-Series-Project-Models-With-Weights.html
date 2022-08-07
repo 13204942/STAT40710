@@ -641,7 +641,20 @@ llh &lt;- -unname(fitted.res1@fit$llh)
 AIC_1 &lt;- (-2*(llh))/n + 2*(length(fitted.res1@fit$par))/n
 AIC_1</code></pre>
 <pre><code>## [1] -0.6950743</code></pre>
-<pre class="r"><code>fitted.residual &lt;- fitted.res1</code></pre>
+<pre class="r"><code>fitted.res2 &lt;- garchFit(~ garch(2,2), 
+                           data=x, 
+                           cond.dist=&quot;norm&quot;, 
+                           include.mean = FALSE, 
+                           trace = FALSE)
+llh &lt;- -unname(fitted.res2@fit$llh)
+AIC_2 &lt;- (-2*(llh))/n + 2*(length(fitted.res2@fit$par))/n
+AIC_2</code></pre>
+<pre><code>## [1] -0.6829924</code></pre>
+<pre class="r"><code>if(AIC_1 &lt; AIC_2){
+  fitted.residual &lt;- fitted.res1 
+} else {
+  fitted.residual &lt;- fitted.res2
+}</code></pre>
 </div>
 <div id="check-residuals-of-garch-epsilon_t" class="section level3">
 <h3>Check Residuals of GARCH (epsilon_t)</h3>
