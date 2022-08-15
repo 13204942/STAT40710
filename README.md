@@ -12,3 +12,9 @@
 
 * Simulate and estimate AR(1) + GARCH(1,1) model with *fixed* phi and *different* phi, shared eta, calculated weights
 [AR + GARCH TS Simulation and Estimation](https://htmlpreview.github.io/?https://github.com/13204942/STAT40710/blob/main/STAT40710-Time-Series-Project-Models-With-Weights.html)
+
+* Fit AR(u) + GARCH(2,1) model to real-world fMRI data - Subject CC110045 (little movements)
+[Source Codes in R](https://github.com/13204942/STAT40710/blob/main/STAT40710_TS_Project_fMRI_CC110045.R)
+
+* Fit AR(u) + GARCH(1,1) model to real-world fMRI data - Subject CC110065 (little movements)
+[Source Codes in R](https://github.com/13204942/STAT40710/blob/main/STAT40710_TS_Project_fMRI_CC110056.R)
