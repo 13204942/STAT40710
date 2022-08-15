@@ -14,7 +14,9 @@
 [AR + GARCH TS Simulation and Estimation](https://htmlpreview.github.io/?https://github.com/13204942/STAT40710/blob/main/STAT40710-Time-Series-Project-Models-With-Weights.html)
 
 * Fit AR(u) + GARCH(2,1) model to real-world fMRI data - Subject CC110045 (little movements)
-[Source Codes in R](https://github.com/13204942/STAT40710/blob/main/STAT40710_TS_Project_fMRI_CC110045.R)
+[Source Codes in R](https://github.com/13204942/STAT40710/blob/main/STAT40710_TS_Project_fMRI_CC110045.R)\
+*fMRI source data can be downloaded from [here](https://github.com/13204942/STAT40710/blob/main/CC110045_schaefer_400ROI_rest.txt)*
 
 * Fit AR(u) + GARCH(1,1) model to real-world fMRI data - Subject CC110065 (little movements)
-[Source Codes in R](https://github.com/13204942/STAT40710/blob/main/STAT40710_TS_Project_fMRI_CC110056.R)
+[Source Codes in R](https://github.com/13204942/STAT40710/blob/main/STAT40710_TS_Project_fMRI_CC110056.R)\
+*fMRI source data can be downloaded from [here](https://github.com/13204942/STAT40710/blob/main/CC110056_schaefer_400ROI_rest.txt)*
