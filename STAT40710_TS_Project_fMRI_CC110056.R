@@ -98,8 +98,6 @@ K <- nrow(X)
 N <- ncol(X)
 ci = c(-1.96/sqrt(N), 1.96/sqrt(N))
 
-
-
 arma.est1 <- ar_estimator(X, K, N, lags)
 
 # estiamted orders
@@ -125,15 +123,39 @@ w <- w0/(sum(w0))
 est_residual <- arma.est1$residuals
 # calculate estimated eta with weights
 eta_hat <- w%*%est_residual
+matplot(c(eta_hat), type="l")
 
 x <- c(eta_hat)
-# McLeod.Li test for conditional heteroscedascity 
-McLeod.Li.test(y=x)
+
+# examine cross-correlation
+res.mat <- est_residual%*%t(est_residual)
+res.cor <- cor(res.mat) 
+res.cor_lower <- lower.tri(res.cor, diag = FALSE)
+cross_corr <- c(res.cor[res.cor_lower])
+hist(cross_corr, # histogram
+     col="#c2e7cd", # column color
+     border="black",
+     prob = TRUE, # show densities instead of frequencies
+     xlab = "Cross-correlation",
+     main = "Cross-correlation of squared residuals")
+lines(density(cross_corr), # density plot
+      lwd = 2, # thickness of line
+      col = "chocolate3")
+
+# plot distribution of cross-correlation values
+residual_vec <- as.numeric(rowSums(est_residual))
+ccf(residual_vec, residual_vec, 
+    ylab = "cross-correlation", main = "")
 
 # ACF and PACF
 arch_identify <- acf_identifier(x, lags)
 garch_orders_hat <- order_identifier(arch_identify, lags)
 garch_orders_hat
+
+# McLeod.Li test for conditional heteroscedascity 
+x.arma <- arima(x, order=c(1,0,1))
+x.res <- residuals(x.arma)
+McLeod.Li.test(y=x.res)
 
 #Fit GARCH(1,1)
 fitted.res1<- garchFit(~ garch(1,1), 
@@ -203,11 +225,12 @@ for(j in (1:K)){
 }
 
 head(phi.est2)
+head(phi.est2.se)
 
 
 ### Modelling each series one by one ###
-phi.true <- matrix(NA, nrow = K, ncol = 2)
-phi.true.se <- matrix(NA, nrow = K, ncol = 2)
+phi1.old <- matrix(NA, nrow = K, ncol = 2)
+phi1.old.se <- matrix(NA, nrow = K, ncol = 2)
 sigma.true <- matrix(NA, nrow = K, ncol = N)
 
 # method 1
@@ -231,8 +254,8 @@ sigma.true <- matrix(NA, nrow = K, ncol = N)
 #     phi.est2.se[j,2] <- 0.0
 #   }
 # 
-#   phi.true[i,1:u] <- fit@fit$coef[1:u]
-#   phi.true.se[i,1:u] <- fit@fit$se.coef[1:u]
+#   phi1.old[i,1:u] <- fit@fit$coef[1:u]
+#   phi1.old.se[i,1:u] <- fit@fit$se.coef[1:u]
 #   sigma.true[i,] <- fit@sigma.t
 # }
 
@@ -243,15 +266,15 @@ for(i in (1:K)){
   u <- arma.est1$orders[i,1]
   
   if (u < 2){
-    phi.true[i,2] <- 0.0
-    phi.true.se[i,2] <- 0.0       
+    phi1.old[i,2] <- 0.0
+    phi1.old.se[i,2] <- 0.0       
   } else {
     u = 2
   }
   
   ar_fit <- arima(y, order = c(u,0,0), method = "ML")
-  phi.true[i,1:u] <- ar_fit$coef[1:u]
-  phi.true.se[i,1:u] <- sqrt(diag(ar_fit$var.coef))[1:u]
+  phi1.old[i,1:u] <- ar_fit$coef[1:u]
+  phi1.old.se[i,1:u] <- sqrt(diag(ar_fit$var.coef))[1:u]
   eta = ar_fit$residuals  
   
   garch_fit <- garchFit(~ garch(1,1), 
@@ -278,10 +301,10 @@ matlines(sigma.est, type="l", lwd = 2,
 # average two phi estimator
 # check standard error of phi
 ########### phi 1 ###########
-phi1.se <- cbind(phi.est1.se[,1], phi.true.se[,1], phi.est2.se[,1])
+phi1.se <- cbind(phi.est1.se[,1], phi1.old.se[,1], phi.est2.se[,1])
 
 ########### phi 2 ###########
-phi2.se <- cbind(phi.est1.se[,2], phi.true.se[,2], phi.est2.se[,2])
+phi2.se <- cbind(phi.est1.se[,2], phi1.old.se[,2], phi.est2.se[,2])
 
 #### f4766d red
 #### 47bfc4 green
@@ -305,26 +328,29 @@ matplot(phi2.se, main = "CC110056 Phi 2",
 
 phi.est <- (phi.est1 + phi.est2)/2
 
+### standard error ### 
+phi.est.se <- 0.5*sqrt((phi.est1.se^2 + phi.est2.se^2))
+
 ### phi 1 ### 
-phi1.comp <- melt(cbind(phi.est[,1], phi.true[,1]))
+phi1.comp <- melt(cbind(phi.est.se[,1], phi1.old.se[,1]))
 phi1.comp$Var2 <- as.factor(phi1.comp$Var2)
-levels(phi1.comp$Var2) <- c("phi1.est", "phi1.true")
+levels(phi1.comp$Var2) <- c("phi1.new.est", "phi1.old.est")
 phi1.comp$Var1 <- as.factor(phi1.comp$Var1)
 # compute Mean Squared Error
-phi1.mse <- (1/(2*K))*sum((phi.true[,1] - phi.est[,1])^2)
-phi1.mse
+# phi1.mse <- (1/(2*K))*sum((phi1.old[,1] - phi.est[,1])^2)
+# phi1.mse
 
 ### phi 2 ### 
-phi2.comp <- melt(cbind(phi.est[,2], phi.true[,2]))
+phi2.comp <- melt(cbind(phi.est.se[,2], phi1.old.se[,2]))
 phi2.comp$Var2 <- as.factor(phi2.comp$Var2)
-levels(phi2.comp$Var2) <- c("phi2.est", "phi2.true")
+levels(phi2.comp$Var2) <- c("phi2.new.est", "phi2.old.est")
 phi2.comp$Var1 <- as.factor(phi2.comp$Var1)
 # compute Mean Squared Error
-phi2.mse <- (1/(2*K))*sum((phi.true[,2] - phi.est[,2])^2)
-phi2.mse
+# phi2.mse <- (1/(2*K))*sum((phi1.old[,2] - phi.est[,2])^2)
+# phi2.mse
 
 ggplot(data=phi1.comp, aes(x=Var1, y=value), position=position_dodge(0.5)) +
-  labs(title = "True Phi 1 (Green) vs Estimated Phi 1 (Red)") +
+  labs(title = "Old Estimated Phi 1 (Green) vs New Estimated Phi 1 (Red)") +
   xlab("") +
   ylab("Value") + 
   labs(color="Phi") +  
@@ -335,7 +361,7 @@ ggplot(data=phi1.comp, aes(x=Var1, y=value), position=position_dodge(0.5)) +
 
 
 ggplot(data=phi2.comp, aes(x=Var1, y=value), position=position_dodge(0.5)) +
-  labs(title = "True Phi 2 (Green) vs Estimated Phi 2 (Red)") +
+  labs(title = "Old Estimated Phi 2 (Green) vs New Estimated Phi 2 (Red)") +
   xlab("") +
   ylab("Value") + 
   labs(color="Phi") +  
